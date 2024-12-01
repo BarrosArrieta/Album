@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Álbum Familia Barros Arrieta</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4a4a4a;
+            --secondary-color: #6a89cc;
+            --background-color: #f0f4f8;
+            --card-color: #ffffff;
+            --text-color: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .upload-section {
+            background-color: var(--card-color);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 25px;
+            font-size: 2.5rem;
+            letter-spacing: -1px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="text"], 
+        input[type="file"], 
+        button {
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            padding: 10px 15px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        button {
+            background-color: var(--secondary-color);
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background-color: #5a7fc4;
+            transform: translateY(-2px);
+        }
+
+        .album-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 25px;
+        }
+
+        .photo-item {
+            background-color: var(--card-color);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .photo-item:hover {
+            transform: scale(1.03);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            transition: filter 0.3s ease;
+        }
+
+        .photo-item:hover img {
+            filter: brightness(90%);
+        }
+
+        .photo-item input[type="checkbox"] {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 10;
+            width: 20px;
+            height: 20px;
+            accent-color: var(--secondary-color);
+        }
+
+        .photo-name {
+            text-align: center;
+            padding: 15px;
+            background-color: #f9f9f9;
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        #modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #modal-img {
+            max-width: 90%;
+            max-height: 90%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 15px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .error-message {
+            color: red;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .album-container {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="upload-section">
+            <h1>📸 Álbum Familiar</h1>
+            <div class="controls">
+                <div>
+                    <input type="text" id="searchInput" placeholder="🔍 Buscar por nombre">
+                    <button onclick="searchPhotos()">Buscar</button>
+                </div>
+                <div>
+                    <input type="file" id="fileInput" accept="image/*" multiple>
+                    <input type="text" id="photoName" placeholder="Nombre de la foto">
+                    <button onclick="uploadPhotos()">Subir Fotos</button>
+                    <button onclick="deleteSelectedPhotos()">Eliminar Seleccionadas</button>
+                </div>
+            </div>
+            <div id="errorContainer" class="error-message"></div>
+        </div>
+
+        <div id="albumContainer" class="album-container"></div>
+        <div id="modal" onclick="closeModal()">
+            <img id="modal-img">
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '357ac201afb200a997d67257266b18f9';
+        let photos = [];
+
+        function displayError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.textContent = message;
+            setTimeout(() => {
+                errorContainer.textContent = '';
+            }, 5000);
+        }
+
+        function uploadPhotos() {
+            const password = prompt('Ingrese la contraseña:');
+            if (password !== '2024') {
+                alert('Contraseña incorrecta');
+                return;
+            }
+
+            const fileInput = document.getElementById('fileInput');
+            const photoName = document.getElementById('photoName').value || 'Sin nombre';
+            
+            if (fileInput.files.length === 0) {
+                displayError('Por favor, selecciona al menos una imagen');
+                return;
+            }
+
+            Array.from(fileInput.files).forEach(file => {
+                // Validar tamaño de archivo (máximo 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    displayError(`La imagen ${file.name} es demasiado grande. Máximo 5MB`);
+                    return;
+                }
+
+                // Crear FormData para la solicitud
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('key', API_KEY);
+                
+                // Configurar opciones de la solicitud
+                const requestOptions = {
+                    method: 'POST',
+                    body: formData
+                };
+
+                // Mostrar indicador de carga
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.textContent = 'Subiendo...';
+                document.getElementById('errorContainer').appendChild(loadingIndicator);
+
+                // Realizar la solicitud de subida
+                fetch('https://api.imgbb.com/1/upload', requestOptions)
+                .then(response => {
+                    // Eliminar indicador de carga
+                    loadingIndicator.remove();
+
+                    // Verificar si la respuesta es válida
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`Error HTTP: ${response.status} - ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        const photoData = {
+                            id: Date.now(),
+                            url: data.data.url,
+                            name: photoName
+                        };
+                        photos.push(photoData);
+                        renderPhotos();
+                        savePhotosToLocalStorage();
+                        displayError('Imagen subida con éxito');
+                    } else {
+                        throw new Error('La subida no fue exitosa');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error detallado:', error);
+                    displayError('Error al subir la imagen: ' + error.message);
+                });
+            });
+
+            // Limpiar el input de archivo después de la subida
+            fileInput.value = '';
+            document.getElementById('photoName').value = '';
+        }
+
+        function deleteSelectedPhotos() {
+            const password = prompt('Ingrese la contraseña:');
+            if (password !== '2024') {
+                alert('Contraseña incorrecta');
+                return;
+            }
+
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            checkboxes.forEach(checkbox => {
+                const photoId = parseInt(checkbox.getAttribute('data-id'));
+                photos = photos.filter(photo => photo.id !== photoId);
+            });
+
+            renderPhotos();
+            savePhotosToLocalStorage();
+        }
+
+        function renderPhotos(filteredPhotos = null) {
+            const container = document.getElementById('albumContainer');
+            container.innerHTML = '';
+            
+            const photosToRender = filteredPhotos || photos;
+
+            photosToRender.forEach(photo => {
+                const photoDiv = document.createElement('div');
+                photoDiv.className = 'photo-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.setAttribute('data-id', photo.id);
+
+                const img = document.createElement('img');
+                img.src = photo.url;
+                img.onclick = () => openModal(photo.url);
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'photo-name';
+                nameDiv.textContent = photo.name;
+
+                photoDiv.appendChild(checkbox);
+                photoDiv.appendChild(img);
+                photoDiv.appendChild(nameDiv);
+                
+                container.appendChild(photoDiv);
+            });
+        }
+
+        function searchPhotos() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filteredPhotos = photos.filter(photo => 
+                photo.name.toLowerCase().includes(searchTerm)
+            );
+            renderPhotos(filteredPhotos);
+        }
+
+        function openModal(url) {
+            const modal = document.getElementById('modal');
+            const modalImg = document.getElementById('modal-img');
+            modalImg.src = url;
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.style.display = 'none';
+        }
+
+        function savePhotosToLocalStorage() {
+            localStorage.setItem('familyAlbumPhotos', JSON.stringify(photos));
+        }
+
+        function loadPhotosFromLocalStorage() {
+            const savedPhotos = localStorage.getItem('familyAlbumPhotos');
+            if (savedPhotos) {
+                photos = JSON.parse(savedPhotos);
+                renderPhotos();
+            }
+        }
+
+        // Cargar fotos al iniciar
+        loadPhotosFromLocalStorage();
+    </script>
+</body>
+</html>
